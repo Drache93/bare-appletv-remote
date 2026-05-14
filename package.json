@@ -1,0 +1,69 @@
+{
+  "name": "bare-appletv-remote",
+  "version": "0.1.0",
+  "description": "Apple TV remote control library for the Bare runtime",
+  "keywords": [
+    "apple tv",
+    "appletv",
+    "companion",
+    "bare",
+    "pear",
+    "remote"
+  ],
+  "scripts": {
+    "format": "prettier . --write",
+    "test": "brittle-bare test/all.js",
+    "lint": "prettier . --check && lunte"
+  },
+  "main": "index.js",
+  "types": "index.d.ts",
+  "bin": {
+    "appletv": "./bin/appletv.js"
+  },
+  "imports": {
+    "buffer": {
+      "bare": "bare-buffer",
+      "default": "buffer"
+    },
+    "crypto": {
+      "bare": "bare-crypto",
+      "default": "crypto"
+    },
+    "net": {
+      "bare": "bare-net",
+      "default": "net"
+    },
+    "path": {
+      "bare": "bare-path",
+      "default": "path"
+    },
+    "process": {
+      "bare": "bare-process",
+      "default": "process"
+    },
+    "fs": {
+      "bare": "bare-fs",
+      "default": "fs"
+    }
+  },
+  "license": "MIT",
+  "dependencies": {
+    "bare-buffer": "^3.4.2",
+    "bare-crypto": "^1.12.0",
+    "bare-dgram": "^1.0.1",
+    "bare-mdns-discovery": "^0.1.0",
+    "bare-net": "^2.2.0",
+    "bare-path": "^3.0.0",
+    "bare-process": "^4.2.2",
+    "bare-readline": "^1.2.0",
+    "brittle": "^3.19.1",
+    "compact-encoding": "^2.18.0",
+    "ready-resource": "^1.2.0",
+    "sodium-universal": "^5.0.1"
+  },
+  "devDependencies": {
+    "lunte": "^1.8.0",
+    "prettier": "^3.8.3",
+    "prettier-config-holepunch": "^2.0.0"
+  }
+}
