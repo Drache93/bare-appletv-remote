@@ -4,7 +4,7 @@ const process = require('process')
 const ReadyResource = require('ready-resource')
 const AppleTVDiscovery = require('./lib/appletv')
 const { pair: runPairing } = require('./lib/pairing')
-const { sleep: runSleep, playPause: runPlayPause, back: runBack, wakeDevice: runWake } = require('./lib/commands')
+const { sleep: runSleep, playPause: runPlayPause, back: runBack, volumeUp: runVolumeUp, volumeDown: runVolumeDown, up: runUp, down: runDown, left: runLeft, right: runRight, click: runClick, wakeDevice: runWake } = require('./lib/commands')
 
 const DEFAULT_CREDS_FILE = path.join(
   process.env.HOME || process.env.USERPROFILE || '.',
@@ -20,6 +20,7 @@ function loadCreds(file) {
 }
 
 function saveCreds(file, creds) {
+  fs.mkdirSync(path.dirname(file), { recursive: true })
   fs.writeFileSync(file, JSON.stringify(creds, null, 2))
 }
 
@@ -30,6 +31,8 @@ class AppleTVRemote extends ReadyResource {
     this.debug = opts.debug || false
     this._creds = opts.credentials || null
     this._credentialsFile = opts.credentialsFile || DEFAULT_CREDS_FILE
+    this._host = opts.host || null
+    this._port = opts.port || null
 
     // Populated after ready()
     this.name = null
@@ -50,9 +53,14 @@ class AppleTVRemote extends ReadyResource {
             'Pass { onpin: async () => "123456" } to trigger pairing.'
         )
       }
-      const devices = await AppleTVRemote.scan({ debug: this.debug, first: true })
-      if (!devices.length) throw new Error('No Apple TVs found on the network')
-      const device = devices[0]
+      let device
+      if (this._host) {
+        device = { name: this._host, address: this._host, port: this._port, model: null, txt: {} }
+      } else {
+        const devices = await AppleTVRemote.scan({ debug: this.debug, first: true })
+        if (!devices.length) throw new Error('No Apple TVs found on the network')
+        device = devices[0]
+      }
       const rpfl = parseInt(device.txt?.rpFl || device.txt?.rpfl || '0', 16)
       const pinSupported = !!(rpfl & 0x4000)
       console.log(`[pair] found: ${device.name} (${device.address}:${device.port}) model=${device.model} rpfl=0x${rpfl.toString(16)} pinSupported=${pinSupported}`)
@@ -83,6 +91,41 @@ class AppleTVRemote extends ReadyResource {
   async back() {
     await this.ready()
     await runBack(this._creds, this.debug)
+  }
+
+  async volumeUp() {
+    await this.ready()
+    await runVolumeUp(this._creds, this.debug)
+  }
+
+  async volumeDown() {
+    await this.ready()
+    await runVolumeDown(this._creds, this.debug)
+  }
+
+  async up() {
+    await this.ready()
+    await runUp(this._creds, this.debug)
+  }
+
+  async down() {
+    await this.ready()
+    await runDown(this._creds, this.debug)
+  }
+
+  async left() {
+    await this.ready()
+    await runLeft(this._creds, this.debug)
+  }
+
+  async right() {
+    await this.ready()
+    await runRight(this._creds, this.debug)
+  }
+
+  async click() {
+    await this.ready()
+    await runClick(this._creds, this.debug)
   }
 
   async wake() {

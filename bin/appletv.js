@@ -57,6 +57,41 @@ const commands = {
     await remote.close()
     console.log('Done.')
   },
+  async volup() {
+    await remote.volumeUp()
+    await remote.close()
+    console.log('Done.')
+  },
+  async voldown() {
+    await remote.volumeDown()
+    await remote.close()
+    console.log('Done.')
+  },
+  async up() {
+    await remote.up()
+    await remote.close()
+    console.log('Done.')
+  },
+  async down() {
+    await remote.down()
+    await remote.close()
+    console.log('Done.')
+  },
+  async left() {
+    await remote.left()
+    await remote.close()
+    console.log('Done.')
+  },
+  async right() {
+    await remote.right()
+    await remote.close()
+    console.log('Done.')
+  },
+  async click() {
+    await remote.click()
+    await remote.close()
+    console.log('Done.')
+  },
   async wake() {
     await remote.wake()
     await remote.close()
@@ -65,7 +100,7 @@ const commands = {
 }
 
 if (!cmd || !commands[cmd]) {
-  console.log('Usage: appletv <pair|sleep|play|back|wake>')
+  console.log('Usage: appletv <pair|sleep|play|back|volup|voldown|up|down|left|right|click|wake>')
   process.exit(1)
 }
 

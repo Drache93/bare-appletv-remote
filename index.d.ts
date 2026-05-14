@@ -30,6 +30,10 @@ export interface AppleTVRemoteOptions {
   credentials?: Credentials
   /** Override the default credentials file path (~/.appletv-credentials.json). */
   credentialsFile?: string
+  /** Skip mDNS discovery and connect directly to this host. */
+  host?: string
+  /** Port to use when host is set (defaults to 49152). */
+  port?: number
   debug?: boolean
 }
 
@@ -62,7 +66,25 @@ export declare class AppleTVRemote extends EventEmitter {
 
   /** Put the Apple TV to sleep. */
   sleep(): Promise<void>
-  /** Wake the Apple TV via Wake-on-LAN. */
+  /** Toggle play/pause. */
+  playPause(): Promise<void>
+  /** Press the back/menu button. */
+  back(): Promise<void>
+  /** Increase volume by one step. */
+  volumeUp(): Promise<void>
+  /** Decrease volume by one step. */
+  volumeDown(): Promise<void>
+  /** Navigate up. */
+  up(): Promise<void>
+  /** Navigate down. */
+  down(): Promise<void>
+  /** Navigate left. */
+  left(): Promise<void>
+  /** Navigate right. */
+  right(): Promise<void>
+  /** Select / click the focused item. */
+  click(): Promise<void>
+  /** Wake the Apple TV via Wake-on-LAN (requires MAC address in credentials). */
   wake(): Promise<void>
 
   /** Emitted after a successful first-time pairing and credential save. */
