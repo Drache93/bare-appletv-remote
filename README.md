@@ -1,6 +1,6 @@
 # bare-appletv-remote
 
-Apple TV remote control library for the [Bare](https://github.com/nicolo-ribaudo/bare) runtime (Holepunch / Pear stack).
+Apple TV remote control library for the [Bare](https://github.com/holepunchto/bare) runtime
 
 Controls Apple TV via the **Companion Link** protocol — the same protocol used by the iOS Remote app. Handles discovery, pairing, session encryption, and power commands.
 
@@ -113,7 +113,7 @@ Uses the **Companion Link** protocol (`_companion-link._tcp` mDNS service) with 
 - **Commands**: Encrypted OPACK messages with HID event payloads
 - **Wake**: UDP Wake-on-LAN magic packet (MAC from mDNS `rpAD` TXT record)
 
-Crypto via [`sodium-universal`](https://github.com/sodium-friends/sodium-universal).
+Crypto via [`sodium-universal`](https://github.com/holepunchto/sodium-universal).
 
 ## License
 
