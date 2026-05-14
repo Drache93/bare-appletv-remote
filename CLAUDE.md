@@ -54,7 +54,7 @@ Full flow per connection:
 
 All crypto uses **`sodium-universal`** (X25519 DH, Ed25519 sign/verify, ChaCha20-Poly1305 IETF). HKDF-SHA512 is implemented manually in `lib/hkdf.js` using `require('crypto').createHmac` (resolves to bare-crypto in Bare via the import map). TLV8 encoding is in `lib/tlv.js`.
 
-Nonces: HAP setup/verify nonces are label strings right-padded into 12 bytes (e.g. `"PS-Msg05"` → 4 zero bytes + 8 ASCII). Session nonces are 8-byte LE counter at bytes 4–11.
+Nonces: HAP setup/verify nonces are label strings right-padded into 12 bytes (e.g. `"PS-Msg05"` → 4 zero bytes + 8 ASCII). Session nonces are 8-byte LE counter at bytes **0–7**, zeros at bytes 8–11 (pyatv: `counter.to_bytes(12, "little")`). E_OPACK frames also use AAD = frame header (type byte + 3-byte BE payload length).
 
 ### Key files
 

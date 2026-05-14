@@ -14,7 +14,11 @@ function readPin() {
     stdin.setMode(tty.constants.MODE_NORMAL)
     stdin.on('data', (data) => {
       const str = data.toString()
-      if (str.includes('\n') || str.includes('\r')) {
+      const nl = str.indexOf('\n')
+      const cr = str.indexOf('\r')
+      const cut = nl !== -1 && cr !== -1 ? Math.min(nl, cr) : nl !== -1 ? nl : cr
+      if (cut !== -1) {
+        answer += str.slice(0, cut)
         stdin.destroy()
         stdout.write('\n')
         resolve(answer.trim())
@@ -43,6 +47,16 @@ const commands = {
     await remote.close()
     console.log('Done.')
   },
+  async play() {
+    await remote.playPause()
+    await remote.close()
+    console.log('Done.')
+  },
+  async back() {
+    await remote.back()
+    await remote.close()
+    console.log('Done.')
+  },
   async wake() {
     await remote.wake()
     await remote.close()
@@ -51,7 +65,7 @@ const commands = {
 }
 
 if (!cmd || !commands[cmd]) {
-  console.log('Usage: appletv <pair|sleep|wake>')
+  console.log('Usage: appletv <pair|sleep|play|back|wake>')
   process.exit(1)
 }
 

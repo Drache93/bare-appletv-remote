@@ -78,7 +78,7 @@ When pairing is initiated the Apple TV should display a PIN automatically. If no
 
 1. **Wake the TV first.** The PIN dialog only appears when the TV is active. Press a button on the physical Siri Remote to wake it, then run `pair` again.
 
-2. **Check the TV is on the home screen.** The dialog will not appear over the top of a full-screen app. Press the TV/home button to return to the home screen first.
+2. **The PIN appears as an overlay anywhere.** It will appear over full-screen apps, the home screen, or even during video playback — you do not need to navigate to a specific screen first.
 
 3. **Enable remote access.** On the Apple TV go to **Settings → AirPlay & HomeKit** and make sure **Allow Access** is not set to _No One_.
 

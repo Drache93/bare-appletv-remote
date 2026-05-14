@@ -4,7 +4,7 @@ const process = require('process')
 const ReadyResource = require('ready-resource')
 const AppleTVDiscovery = require('./lib/appletv')
 const { pair: runPairing } = require('./lib/pairing')
-const { sleep: runSleep, wakeDevice: runWake } = require('./lib/commands')
+const { sleep: runSleep, playPause: runPlayPause, back: runBack, wakeDevice: runWake } = require('./lib/commands')
 
 const DEFAULT_CREDS_FILE = path.join(
   process.env.HOME || process.env.USERPROFILE || '.',
@@ -50,9 +50,12 @@ class AppleTVRemote extends ReadyResource {
             'Pass { onpin: async () => "123456" } to trigger pairing.'
         )
       }
-      const devices = await AppleTVRemote.scan({ debug: this.debug })
+      const devices = await AppleTVRemote.scan({ debug: this.debug, first: true })
       if (!devices.length) throw new Error('No Apple TVs found on the network')
       const device = devices[0]
+      const rpfl = parseInt(device.txt?.rpFl || device.txt?.rpfl || '0', 16)
+      const pinSupported = !!(rpfl & 0x4000)
+      console.log(`[pair] found: ${device.name} (${device.address}:${device.port}) model=${device.model} rpfl=0x${rpfl.toString(16)} pinSupported=${pinSupported}`)
       creds = await AppleTVRemote.pair(device, this.onpin, { debug: this.debug })
       saveCreds(this._credentialsFile, creds)
       this.emit('paired')
@@ -70,6 +73,16 @@ class AppleTVRemote extends ReadyResource {
   async sleep() {
     await this.ready()
     await runSleep(this._creds, this.debug)
+  }
+
+  async playPause() {
+    await this.ready()
+    await runPlayPause(this._creds, this.debug)
+  }
+
+  async back() {
+    await this.ready()
+    await runBack(this._creds, this.debug)
   }
 
   async wake() {
