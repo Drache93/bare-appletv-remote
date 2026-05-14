@@ -40,12 +40,12 @@ await remote.close()
 
 ### Options
 
-| Option | Type | Description |
-|---|---|---|
-| `onpin` | `() => Promise<string> \| string` | Called when pairing is needed. Return the PIN shown on screen. Required for first-time pairing. |
-| `credentials` | `Credentials` | Pass credentials directly, bypassing disk. |
-| `credentialsFile` | `string` | Override the credentials file path (default: `~/.appletv-credentials.json`). |
-| `debug` | `boolean` | Log protocol traffic. |
+| Option            | Type                              | Description                                                                                     |
+| ----------------- | --------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `onpin`           | `() => Promise<string> \| string` | Called when pairing is needed. Return the PIN shown on screen. Required for first-time pairing. |
+| `credentials`     | `Credentials`                     | Pass credentials directly, bypassing disk.                                                      |
+| `credentialsFile` | `string`                          | Override the credentials file path (default: `~/.appletv-credentials.json`).                    |
+| `debug`           | `boolean`                         | Log protocol traffic.                                                                           |
 
 ### Events
 
@@ -58,14 +58,18 @@ remote.on('close', () => console.log('Closed.'))
 ### CLI
 
 ```bash
+npm install -g bare-appletv-remote
+```
+
+```bash
 # First run: scans, pairs, saves credentials
-./bin/appletv.js pair
+baretv pair
 
 # Put the TV to sleep
-./bin/appletv.js sleep
+baretv sleep
 
 # Wake-on-LAN
-./bin/appletv.js wake
+baretv wake
 ```
 
 ### Pairing troubleshooting
@@ -76,7 +80,7 @@ When pairing is initiated the Apple TV should display a PIN automatically. If no
 
 2. **Check the TV is on the home screen.** The dialog will not appear over the top of a full-screen app. Press the TV/home button to return to the home screen first.
 
-3. **Enable remote access.** On the Apple TV go to **Settings → AirPlay & HomeKit** and make sure **Allow Access** is not set to *No One*.
+3. **Enable remote access.** On the Apple TV go to **Settings → AirPlay & HomeKit** and make sure **Allow Access** is not set to _No One_.
 
 4. **Remove a stale pairing.** If the TV silently rejects the request (no PIN shown, but the handshake completes), a leftover pairing entry may be blocking it. On the Apple TV go to **Settings → AirPlay & HomeKit → Remote App and Devices** (or **Settings → Remotes and Devices → Remote App and Devices**) and remove any existing entry for this device, then pair again.
 
