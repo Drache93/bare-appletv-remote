@@ -4,7 +4,7 @@ const process = require('process')
 const ReadyResource = require('ready-resource')
 const AppleTVDiscovery = require('./lib/appletv')
 const { pair: runPairing } = require('./lib/pairing')
-const { sleep: runSleep, playPause: runPlayPause, back: runBack, volumeUp: runVolumeUp, volumeDown: runVolumeDown, up: runUp, down: runDown, left: runLeft, right: runRight, click: runClick, wakeDevice: runWake } = require('./lib/commands')
+const { openSession, sendHID, sendTouchEvent, HID, TouchPhase, wakeDevice: runWake } = require('./lib/commands')
 
 const DEFAULT_CREDS_FILE = path.join(
   process.env.HOME || process.env.USERPROFILE || '.',
@@ -33,12 +33,16 @@ class AppleTVRemote extends ReadyResource {
     this._credentialsFile = opts.credentialsFile || DEFAULT_CREDS_FILE
     this._host = opts.host || null
     this._port = opts.port || null
+    this._idleMs = opts.idleTimeout || 0
 
     // Populated after ready()
     this.name = null
     this.address = null
     this.port = null
     this.mac = null
+
+    this._sessionHandle = null
+    this._idleTimer = null
   }
 
   async _open() {
@@ -74,58 +78,129 @@ class AppleTVRemote extends ReadyResource {
     this.address = creds.address
     this.port = creds.port
     this.mac = creds.mac || null
+
+    await this._getSession()
   }
 
-  _close() {}
+  async _close() {
+    await this._closeSession()
+  }
+
+  async _getSession() {
+    if (!this._sessionHandle) {
+      this._sessionHandle = await openSession(this._creds, this.debug)
+      this._sessionHandle.conn.once('close', () => {
+        clearTimeout(this._idleTimer)
+        this._idleTimer = null
+        this._sessionHandle = null
+      })
+    }
+    this._resetIdle()
+    return this._sessionHandle
+  }
+
+  _resetIdle() {
+    clearTimeout(this._idleTimer)
+    if (this._idleMs > 0) {
+      this._idleTimer = setTimeout(() => this._closeSession(), this._idleMs)
+    }
+  }
+
+  async _closeSession() {
+    const handle = this._sessionHandle
+    this._sessionHandle = null
+    clearTimeout(this._idleTimer)
+    this._idleTimer = null
+    if (handle) await handle.close()
+  }
 
   async sleep() {
     await this.ready()
-    await runSleep(this._creds, this.debug)
+    sendHID(await this._getSession(), HID.sleep)
   }
 
   async playPause() {
     await this.ready()
-    await runPlayPause(this._creds, this.debug)
+    sendHID(await this._getSession(), HID.playPause)
+  }
+
+  async menu() {
+    await this.ready()
+    sendHID(await this._getSession(), HID.menu)
   }
 
   async back() {
     await this.ready()
-    await runBack(this._creds, this.debug)
+    sendHID(await this._getSession(), HID.back)
   }
 
   async volumeUp() {
     await this.ready()
-    await runVolumeUp(this._creds, this.debug)
+    sendHID(await this._getSession(), HID.volumeUp)
   }
 
   async volumeDown() {
     await this.ready()
-    await runVolumeDown(this._creds, this.debug)
+    sendHID(await this._getSession(), HID.volumeDown)
   }
 
   async up() {
     await this.ready()
-    await runUp(this._creds, this.debug)
+    sendHID(await this._getSession(), HID.up)
   }
 
   async down() {
     await this.ready()
-    await runDown(this._creds, this.debug)
+    sendHID(await this._getSession(), HID.down)
   }
 
   async left() {
     await this.ready()
-    await runLeft(this._creds, this.debug)
+    sendHID(await this._getSession(), HID.left)
   }
 
   async right() {
     await this.ready()
-    await runRight(this._creds, this.debug)
+    sendHID(await this._getSession(), HID.right)
   }
 
   async click() {
     await this.ready()
-    await runClick(this._creds, this.debug)
+    sendHID(await this._getSession(), HID.click)
+  }
+
+  async touchBegin(x, y) {
+    await this.ready()
+    sendTouchEvent(await this._getSession(), x, y, TouchPhase.began)
+  }
+
+  async touchMove(x, y) {
+    await this.ready()
+    sendTouchEvent(await this._getSession(), x, y, TouchPhase.moved)
+  }
+
+  async touchEnd(x, y) {
+    await this.ready()
+    sendTouchEvent(await this._getSession(), x, y, TouchPhase.ended)
+  }
+
+  async swipe(direction, opts = {}) {
+    const steps = opts.steps || 10
+    const distance = opts.distance || 300
+    const stepDelay = opts.stepDelay || 8
+
+    await this.ready()
+    const handle = await this._getSession()
+
+    const dx = direction === 'right' ? 1 : direction === 'left' ? -1 : 0
+    const dy = direction === 'down' ? 1 : direction === 'up' ? -1 : 0
+
+    sendTouchEvent(handle, 500, 500, TouchPhase.began)
+    for (let i = 1; i <= steps; i++) {
+      await new Promise((r) => setTimeout(r, stepDelay))
+      sendTouchEvent(handle, 500 + (dx * distance * i) / steps, 500 + (dy * distance * i) / steps, TouchPhase.moved)
+    }
+    sendTouchEvent(handle, 500 + dx * distance, 500 + dy * distance, TouchPhase.ended)
   }
 
   async wake() {

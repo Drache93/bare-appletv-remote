@@ -34,7 +34,18 @@ export interface AppleTVRemoteOptions {
   host?: string
   /** Port to use when host is set (defaults to 49152). */
   port?: number
+  /** Milliseconds of inactivity before the session is auto-closed. Defaults to 0 (never). */
+  idleTimeout?: number
   debug?: boolean
+}
+
+export interface SwipeOptions {
+  /** Number of intermediate move steps. Default 10. */
+  steps?: number
+  /** Total swipe distance on the 0–1000 touchpad surface. Default 300. */
+  distance?: number
+  /** Delay in ms between each step. Default 8. */
+  stepDelay?: number
 }
 
 export interface ScanOptions {
@@ -84,6 +95,16 @@ export declare class AppleTVRemote extends EventEmitter {
   right(): Promise<void>
   /** Select / click the focused item. */
   click(): Promise<void>
+  /** Press the menu button (same physical key as back on most remotes). */
+  menu(): Promise<void>
+  /** Send a touch-begin event at (x, y) on the 0–1000 touchpad surface. */
+  touchBegin(x: number, y: number): Promise<void>
+  /** Send a touch-move event at (x, y). */
+  touchMove(x: number, y: number): Promise<void>
+  /** Send a touch-end event at (x, y). */
+  touchEnd(x: number, y: number): Promise<void>
+  /** Simulate a swipe gesture across the virtual touchpad. */
+  swipe(direction: 'up' | 'down' | 'left' | 'right', opts?: SwipeOptions): Promise<void>
   /** Wake the Apple TV via Wake-on-LAN (requires MAC address in credentials). */
   wake(): Promise<void>
 

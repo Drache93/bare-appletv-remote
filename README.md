@@ -2,7 +2,7 @@
 
 Apple TV remote control library for the [Bare](https://github.com/holepunchto/bare) runtime
 
-Controls Apple TV via the **Companion Link** protocol — the same protocol used by the iOS Remote app. Handles discovery, pairing, session encryption, and power commands.
+Controls Apple TV via the **Companion Link** protocol — the same protocol used by the iOS Remote app. Handles discovery, pairing, session encryption, and remote commands including navigation, playback, touch gestures, and power.
 
 ## Install
 
@@ -29,23 +29,52 @@ const remote = new AppleTVRemote({
 
 await remote.ready()
 
-// Put the TV to sleep
-await remote.sleep()
+// Navigation
+await remote.up()
+await remote.down()
+await remote.left()
+await remote.right()
+await remote.click()      // select focused item
+await remote.menu()       // menu / back button
+await remote.back()       // alias for menu()
 
-// Wake via Wake-on-LAN (requires Ethernet connection on the Apple TV)
-await remote.wake()
+// Playback
+await remote.playPause()
+
+// Volume
+await remote.volumeUp()
+await remote.volumeDown()
+
+// Power
+await remote.sleep()
+await remote.wake()       // Wake-on-LAN (requires Ethernet on the Apple TV)
+
+// Touch gestures — coordinates are on a 0–1000 × 0–1000 surface
+await remote.swipe('right')           // fast-forward
+await remote.swipe('left')            // rewind
+await remote.swipe('right', { distance: 500, steps: 20 })
+
+// Low-level touch — useful for custom UI or continuous scrubbing
+await remote.touchBegin(500, 500)
+await remote.touchMove(700, 500)
+await remote.touchEnd(700, 500)
 
 await remote.close()
 ```
 
+The session connection is established during `ready()` and kept open for the lifetime of the remote. If the Apple TV drops the connection (e.g. after a long idle or on sleep), it is re-established transparently on the next command.
+
 ### Options
 
-| Option            | Type                              | Description                                                                                     |
-| ----------------- | --------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `onpin`           | `() => Promise<string> \| string` | Called when pairing is needed. Return the PIN shown on screen. Required for first-time pairing. |
-| `credentials`     | `Credentials`                     | Pass credentials directly, bypassing disk.                                                      |
-| `credentialsFile` | `string`                          | Override the credentials file path (default: `~/.appletv-credentials.json`).                    |
-| `debug`           | `boolean`                         | Log protocol traffic.                                                                           |
+| Option            | Type                              | Default                            | Description                                                                                     |
+| ----------------- | --------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `onpin`           | `() => Promise<string> \| string` | —                                  | Called when pairing is needed. Return the PIN shown on screen. Required for first-time pairing. |
+| `credentials`     | `Credentials`                     | —                                  | Pass credentials directly, bypassing disk.                                                      |
+| `credentialsFile` | `string`                          | `~/.appletv-credentials.json`      | Override the credentials file path.                                                             |
+| `host`            | `string`                          | —                                  | Skip mDNS discovery and connect directly to this IP address.                                    |
+| `port`            | `number`                          | —                                  | Port to use when `host` is set.                                                                 |
+| `idleTimeout`     | `number`                          | `0`                                | Milliseconds of inactivity before the session is closed. Default keeps it open indefinitely.     |
+| `debug`           | `boolean`                         | `false`                            | Log protocol traffic.                                                                           |
 
 ### Events
 
@@ -63,13 +92,21 @@ npm install -g bare-appletv-remote
 
 ```bash
 # First run: scans, pairs, saves credentials
-baretv pair
+appletv pair
 
-# Put the TV to sleep
-baretv sleep
+# Navigation
+appletv up | down | left | right | click
 
-# Wake-on-LAN
-baretv wake
+# Playback & volume
+appletv play
+appletv volup | voldown
+
+# Menu
+appletv back
+
+# Power
+appletv sleep
+appletv wake
 ```
 
 ### Pairing troubleshooting
@@ -100,7 +137,7 @@ const credentials = await AppleTVRemote.pair(devices[0], async () => getPin())
 
 // Use the credentials
 const remote = new AppleTVRemote({ credentials })
-await remote.sleep()
+await remote.up()
 await remote.close()
 ```
 
@@ -111,6 +148,7 @@ Uses the **Companion Link** protocol (`_companion-link._tcp` mDNS service) with 
 - **Pairing**: SRP-6a (3072-bit) + Ed25519 long-term keys + ChaCha20-Poly1305
 - **Sessions**: X25519 ephemeral DH + HKDF-SHA512 session keys
 - **Commands**: Encrypted OPACK messages with HID event payloads
+- **Touch**: `_touchUpdate` messages on a 1000×1000 virtual touchpad surface
 - **Wake**: UDP Wake-on-LAN magic packet (MAC from mDNS `rpAD` TXT record)
 
 Crypto via [`sodium-universal`](https://github.com/holepunchto/sodium-universal).
