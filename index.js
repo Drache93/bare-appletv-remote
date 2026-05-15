@@ -4,7 +4,14 @@ const process = require('process')
 const ReadyResource = require('ready-resource')
 const AppleTVDiscovery = require('./lib/appletv')
 const { pair: runPairing } = require('./lib/pairing')
-const { openSession, sendHID, sendTouchEvent, HID, TouchPhase, wakeDevice: runWake } = require('./lib/commands')
+const {
+  openSession,
+  sendHID,
+  sendTouchEvent,
+  HID,
+  TouchPhase,
+  wakeDevice: runWake
+} = require('./lib/commands')
 
 const DEFAULT_CREDS_FILE = path.join(
   process.env.HOME || process.env.USERPROFILE || '.',
@@ -67,7 +74,9 @@ class AppleTVRemote extends ReadyResource {
       }
       const rpfl = parseInt(device.txt?.rpFl || device.txt?.rpfl || '0', 16)
       const pinSupported = !!(rpfl & 0x4000)
-      console.log(`[pair] found: ${device.name} (${device.address}:${device.port}) model=${device.model} rpfl=0x${rpfl.toString(16)} pinSupported=${pinSupported}`)
+      console.log(
+        `[pair] found: ${device.name} (${device.address}:${device.port}) model=${device.model} rpfl=0x${rpfl.toString(16)} pinSupported=${pinSupported}`
+      )
       creds = await AppleTVRemote.pair(device, this.onpin, { debug: this.debug })
       saveCreds(this._credentialsFile, creds)
       this.emit('paired')
@@ -115,72 +124,72 @@ class AppleTVRemote extends ReadyResource {
   }
 
   async sleep() {
-    await this.ready()
+    if (!this.opened) await this.ready()
     sendHID(await this._getSession(), HID.sleep)
   }
 
   async playPause() {
-    await this.ready()
+    if (!this.opened) await this.ready()
     sendHID(await this._getSession(), HID.playPause)
   }
 
   async menu() {
-    await this.ready()
+    if (!this.opened) await this.ready()
     sendHID(await this._getSession(), HID.menu)
   }
 
   async back() {
-    await this.ready()
+    if (!this.opened) await this.ready()
     sendHID(await this._getSession(), HID.back)
   }
 
   async volumeUp() {
-    await this.ready()
+    if (!this.opened) await this.ready()
     sendHID(await this._getSession(), HID.volumeUp)
   }
 
   async volumeDown() {
-    await this.ready()
+    if (!this.opened) await this.ready()
     sendHID(await this._getSession(), HID.volumeDown)
   }
 
   async up() {
-    await this.ready()
+    if (!this.opened) await this.ready()
     sendHID(await this._getSession(), HID.up)
   }
 
   async down() {
-    await this.ready()
+    if (!this.opened) await this.ready()
     sendHID(await this._getSession(), HID.down)
   }
 
   async left() {
-    await this.ready()
+    if (!this.opened) await this.ready()
     sendHID(await this._getSession(), HID.left)
   }
 
   async right() {
-    await this.ready()
+    if (!this.opened) await this.ready()
     sendHID(await this._getSession(), HID.right)
   }
 
   async click() {
-    await this.ready()
+    if (!this.opened) await this.ready()
     sendHID(await this._getSession(), HID.click)
   }
 
   async touchBegin(x, y) {
-    await this.ready()
+    if (!this.opened) await this.ready()
     sendTouchEvent(await this._getSession(), x, y, TouchPhase.began)
   }
 
   async touchMove(x, y) {
-    await this.ready()
+    if (!this.opened) await this.ready()
     sendTouchEvent(await this._getSession(), x, y, TouchPhase.moved)
   }
 
   async touchEnd(x, y) {
-    await this.ready()
+    if (!this.opened) await this.ready()
     sendTouchEvent(await this._getSession(), x, y, TouchPhase.ended)
   }
 
@@ -189,7 +198,7 @@ class AppleTVRemote extends ReadyResource {
     const distance = opts.distance || 300
     const stepDelay = opts.stepDelay || 8
 
-    await this.ready()
+    if (!this.opened) await this.ready()
     const handle = await this._getSession()
 
     const dx = direction === 'right' ? 1 : direction === 'left' ? -1 : 0
@@ -198,13 +207,18 @@ class AppleTVRemote extends ReadyResource {
     sendTouchEvent(handle, 500, 500, TouchPhase.began)
     for (let i = 1; i <= steps; i++) {
       await new Promise((r) => setTimeout(r, stepDelay))
-      sendTouchEvent(handle, 500 + (dx * distance * i) / steps, 500 + (dy * distance * i) / steps, TouchPhase.moved)
+      sendTouchEvent(
+        handle,
+        500 + (dx * distance * i) / steps,
+        500 + (dy * distance * i) / steps,
+        TouchPhase.moved
+      )
     }
     sendTouchEvent(handle, 500 + dx * distance, 500 + dy * distance, TouchPhase.ended)
   }
 
   async wake() {
-    await this.ready()
+    if (!this.opened) await this.ready()
     await runWake(this._creds)
   }
 

@@ -44,56 +44,67 @@ const commands = {
   },
   async sleep() {
     await remote.sleep()
+    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async play() {
     await remote.playPause()
+    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async back() {
     await remote.back()
+    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async volup() {
     await remote.volumeUp()
+    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async voldown() {
     await remote.volumeDown()
+    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async up() {
     await remote.up()
+    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async down() {
     await remote.down()
+    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async left() {
     await remote.left()
+    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async right() {
     await remote.right()
+    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async click() {
     await remote.click()
+    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async wake() {
     await remote.wake()
+    await sleep()
     await remote.close()
     console.log('Wake packet sent.')
   }
@@ -108,3 +119,5 @@ commands[cmd]().catch((err) => {
   console.error('Error:', err.message)
   process.exit(1)
 })
+
+const sleep = () => new Promise((res) => setTimeout(res, 100))
