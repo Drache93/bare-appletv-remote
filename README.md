@@ -153,6 +153,10 @@ Uses the **Companion Link** protocol (`_companion-link._tcp` mDNS service) with 
 
 Crypto via [`sodium-universal`](https://github.com/holepunchto/sodium-universal).
 
+## Acknowledgements
+
+- [appletv-remote](https://github.com/alokdhir/appletv-remote) by Alok Dhir — prior art and protocol reference
+
 ## License
 
 MIT
