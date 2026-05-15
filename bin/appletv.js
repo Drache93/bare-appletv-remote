@@ -57,6 +57,16 @@ const commands = {
     await remote.close()
     console.log('Done.')
   },
+  async home() {
+    await remote.home()
+    await remote.close()
+    console.log('Done.')
+  },
+  async settings() {
+    await remote.settings()
+    await remote.close()
+    console.log('Done.')
+  },
   async volup() {
     await remote.volumeUp()
     await remote.close()
@@ -120,7 +130,9 @@ const commands = {
 }
 
 if (!cmd || !commands[cmd]) {
-  console.log('Usage: appletv <pair|sleep|play|back|volup|voldown|up|down|left|right|click|wake|swipeleft|swiperight|swipeup|swipedown>')
+  console.log(
+    'Usage: appletv <pair|sleep|play|back|home|settings|volup|voldown|up|down|left|right|click|wake|swipeleft|swiperight|swipeup|swipedown>'
+  )
   process.exit(1)
 }
 

@@ -8,6 +8,7 @@ const {
   openSession,
   sendHID,
   sendTouchEvent,
+  sendAppLaunch,
   HID,
   TouchPhase,
   wakeDevice: runWake
@@ -141,6 +142,16 @@ class AppleTVRemote extends ReadyResource {
   async back() {
     if (!this.opened) await this.ready()
     sendHID(await this._getSession(), HID.back)
+  }
+
+  async home() {
+    if (!this.opened) await this.ready()
+    sendHID(await this._getSession(), HID.home)
+  }
+
+  async settings() {
+    if (!this.opened) await this.ready()
+    sendAppLaunch(await this._getSession(), 'com.apple.TVSettings')
   }
 
   async volumeUp() {
