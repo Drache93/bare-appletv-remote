@@ -215,6 +215,7 @@ class AppleTVRemote extends ReadyResource {
       )
     }
     sendTouchEvent(handle, 500 + dx * distance, 500 + dy * distance, TouchPhase.ended)
+    await new Promise((r) => setTimeout(r, 100))
   }
 
   async wake() {

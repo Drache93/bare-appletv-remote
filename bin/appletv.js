@@ -44,74 +44,83 @@ const commands = {
   },
   async sleep() {
     await remote.sleep()
-    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async play() {
     await remote.playPause()
-    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async back() {
     await remote.back()
-    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async volup() {
     await remote.volumeUp()
-    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async voldown() {
     await remote.volumeDown()
-    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async up() {
     await remote.up()
-    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async down() {
     await remote.down()
-    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async left() {
     await remote.left()
-    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async right() {
     await remote.right()
-    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async click() {
     await remote.click()
-    await sleep()
     await remote.close()
     console.log('Done.')
   },
   async wake() {
     await remote.wake()
-    await sleep()
     await remote.close()
     console.log('Wake packet sent.')
+  },
+  async swipeleft() {
+    await remote.swipe('left')
+    await remote.close()
+    console.log('Done.')
+  },
+  async swiperight() {
+    await remote.swipe('right')
+    await remote.close()
+    console.log('Done.')
+  },
+  async swipeup() {
+    await remote.swipe('up')
+    await remote.close()
+    console.log('Done.')
+  },
+  async swipedown() {
+    await remote.swipe('down')
+    await remote.close()
+    console.log('Done.')
   }
 }
 
 if (!cmd || !commands[cmd]) {
-  console.log('Usage: appletv <pair|sleep|play|back|volup|voldown|up|down|left|right|click|wake>')
+  console.log('Usage: appletv <pair|sleep|play|back|volup|voldown|up|down|left|right|click|wake|swipeleft|swiperight|swipeup|swipedown>')
   process.exit(1)
 }
 
@@ -119,5 +128,3 @@ commands[cmd]().catch((err) => {
   console.error('Error:', err.message)
   process.exit(1)
 })
-
-const sleep = () => new Promise((res) => setTimeout(res, 100))
