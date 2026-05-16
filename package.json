@@ -16,7 +16,6 @@
     "lint": "prettier . --check && lunte"
   },
   "main": "index.js",
-  "types": "index.d.ts",
   "bin": {
     "baretv": "./bin/appletv.js"
   },
@@ -46,12 +45,31 @@
       "default": "fs"
     }
   },
+  "exports": {
+    "./package": "./package.json",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./discovery": {
+      "types": "./discovery.d.ts",
+      "default": "./lib/appletv.js"
+    }
+  },
+  "files": [
+    "package.json",
+    "index.js",
+    "index.d.ts",
+    "discovery.d.ts",
+    "lib/",
+    "bin/"
+  ],
   "license": "MIT",
   "dependencies": {
     "bare-buffer": "^3.4.2",
     "bare-crypto": "^1.12.0",
     "bare-dgram": "^1.0.1",
-    "bare-mdns-discovery": "^0.1.0",
+    "bare-mdns-discovery": "^0.2.0",
     "bare-net": "^2.2.0",
     "bare-path": "^3.0.0",
     "bare-process": "^4.2.2",
