@@ -8,6 +8,7 @@ const {
   openSession,
   sendHID,
   sendTouchEvent,
+  sendTouchEndEvent,
   sendAppLaunch,
   HID,
   TouchPhase,
@@ -98,7 +99,20 @@ class AppleTVRemote extends ReadyResource {
 
   async _getSession() {
     if (!this._sessionHandle) {
-      this._sessionHandle = await openSession(this._creds, this.debug)
+      try {
+        this._sessionHandle = await openSession(this._creds, this.debug)
+      } catch (err) {
+        // Stale address/port (DHCP renewal or ATV restart) — re-discover and retry once
+        const devices = await AppleTVRemote.scan({ debug: this.debug })
+        const device = devices.find((d) =>
+          (this._creds.mac && d.txt?.rpAD === this._creds.mac) ||
+          d.name === this._creds.name
+        )
+        if (!device) throw err
+        this._creds = { ...this._creds, address: device.address, port: device.port }
+        saveCreds(this._credentialsFile, this._creds)
+        this._sessionHandle = await openSession(this._creds, this.debug)
+      }
       this._sessionHandle.conn.once('close', () => {
         clearTimeout(this._idleTimer)
         this._idleTimer = null
@@ -189,25 +203,10 @@ class AppleTVRemote extends ReadyResource {
     sendHID(await this._getSession(), HID.click)
   }
 
-  async touchBegin(x, y) {
-    if (!this.opened) await this.ready()
-    sendTouchEvent(await this._getSession(), x, y, TouchPhase.began)
-  }
-
-  async touchMove(x, y) {
-    if (!this.opened) await this.ready()
-    sendTouchEvent(await this._getSession(), x, y, TouchPhase.moved)
-  }
-
-  async touchEnd(x, y) {
-    if (!this.opened) await this.ready()
-    sendTouchEvent(await this._getSession(), x, y, TouchPhase.ended)
-  }
-
   async swipe(direction, opts = {}) {
     const steps = opts.steps || 10
     const distance = opts.distance || 300
-    const stepDelay = opts.stepDelay || 8
+    const stepDelay = opts.stepDelay || 18
 
     if (!this.opened) await this.ready()
     const handle = await this._getSession()
@@ -215,17 +214,32 @@ class AppleTVRemote extends ReadyResource {
     const dx = direction === 'right' ? 1 : direction === 'left' ? -1 : 0
     const dy = direction === 'down' ? 1 : direction === 'up' ? -1 : 0
 
-    sendTouchEvent(handle, 500, 500, TouchPhase.began)
+    const start = Date.now()
+
+    sendTouchEvent(handle, 500, 500, TouchPhase.began, Date.now() - start)
+
     for (let i = 1; i <= steps; i++) {
       await new Promise((r) => setTimeout(r, stepDelay))
       sendTouchEvent(
         handle,
         500 + (dx * distance * i) / steps,
         500 + (dy * distance * i) / steps,
-        TouchPhase.moved
+        TouchPhase.moved,
+        Date.now() - start
       )
     }
-    sendTouchEvent(handle, 500 + dx * distance, 500 + dy * distance, TouchPhase.ended)
+
+    sendTouchEvent(
+      handle,
+      500 + dx * distance,
+      500 + dy * distance,
+      TouchPhase.ended,
+      Date.now() - start
+    )
+
+    await new Promise((r) => setTimeout(r, 50))
+    sendTouchEndEvent(handle)
+
     await new Promise((r) => setTimeout(r, 100))
   }
 
