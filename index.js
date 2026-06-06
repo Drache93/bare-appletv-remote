@@ -102,16 +102,43 @@ class AppleTVRemote extends ReadyResource {
       try {
         this._sessionHandle = await openSession(this._creds, this.debug)
       } catch (err) {
-        // Stale address/port (DHCP renewal or ATV restart) — re-discover and retry once
-        const devices = await AppleTVRemote.scan({ debug: this.debug })
-        const device = devices.find((d) =>
-          (this._creds.mac && d.txt?.rpAD === this._creds.mac) ||
-          d.name === this._creds.name
-        )
-        if (!device) throw err
-        this._creds = { ...this._creds, address: device.address, port: device.port }
-        saveCreds(this._credentialsFile, this._creds)
-        this._sessionHandle = await openSession(this._creds, this.debug)
+        if (err.verifyError === 2) {
+          // ATV revoked our pairing (Authentication error) — re-pair if we can, else fail clearly
+          if (!this.onpin) {
+            throw new Error(
+              'Apple TV no longer recognises these credentials. ' +
+                'Delete ~/.appletv-credentials.json and re-run `appletv pair`.'
+            )
+          }
+          const devices = await AppleTVRemote.scan({ debug: this.debug })
+          const device = devices.find((d) =>
+            (this._creds.mac && d.txt?.rpAD === this._creds.mac) ||
+            d.name === this._creds.name
+          )
+          if (!device) {
+            throw new Error('Credentials revoked and Apple TV not found on network to re-pair')
+          }
+          this.debug && console.log('[session] credentials revoked — re-pairing')
+          const newCreds = await AppleTVRemote.pair(device, this.onpin, { debug: this.debug })
+          this._creds = newCreds
+          saveCreds(this._credentialsFile, this._creds)
+          this.address = newCreds.address
+          this.port = newCreds.port
+          this.mac = newCreds.mac || null
+          this.emit('paired')
+          this._sessionHandle = await openSession(this._creds, this.debug)
+        } else {
+          // Stale address/port (DHCP renewal or ATV restart) — re-discover and retry once
+          const devices = await AppleTVRemote.scan({ debug: this.debug })
+          const device = devices.find((d) =>
+            (this._creds.mac && d.txt?.rpAD === this._creds.mac) ||
+            d.name === this._creds.name
+          )
+          if (!device) throw err
+          this._creds = { ...this._creds, address: device.address, port: device.port }
+          saveCreds(this._credentialsFile, this._creds)
+          this._sessionHandle = await openSession(this._creds, this.debug)
+        }
       }
       this._sessionHandle.conn.once('close', () => {
         clearTimeout(this._idleTimer)
