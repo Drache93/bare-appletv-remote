@@ -40,11 +40,11 @@ export interface AppleTVRemoteOptions {
 }
 
 export interface SwipeOptions {
-  /** Number of intermediate move steps. Default 10. */
+  /** Number of intermediate move steps. Default 8. */
   steps?: number
-  /** Total swipe distance on the 0–1000 touchpad surface. Default 300. */
+  /** Total swipe distance on the 0–1000 touchpad surface, centered. Default 1000 (edge to edge). */
   distance?: number
-  /** Delay in ms between each step. Default 8. */
+  /** Delay in ms between each step. Default 18. */
   stepDelay?: number
 }
 
@@ -55,6 +55,8 @@ export interface ScanOptions {
 
 export interface PairOptions {
   debug?: boolean
+  /** Re-pair with an existing identity so the Apple TV replaces the old pairing record instead of adding a new peer. */
+  identity?: Pick<Credentials, 'clientId' | 'ltsk' | 'ltpk'>
 }
 
 export declare class AppleTVRemote extends EventEmitter {
@@ -71,9 +73,16 @@ export declare class AppleTVRemote extends EventEmitter {
 
   constructor(opts?: AppleTVRemoteOptions)
 
-  /** Resolves once connected and credentials are loaded or obtained via pairing. */
+  /** Resolves once credentials are loaded or obtained via pairing. The session itself opens lazily on the first command. */
   ready(): Promise<void>
   close(): Promise<void>
+
+  /**
+   * Explicitly re-pair with the Apple TV, reusing the existing identity so the
+   * ATV replaces the old pairing record. Prompts via onpin. Call this when a
+   * command rejects with error code 'EREVOKED'.
+   */
+  repair(): Promise<void>
 
   /** Put the Apple TV to sleep. */
   sleep(): Promise<void>

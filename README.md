@@ -34,9 +34,9 @@ await remote.up()
 await remote.down()
 await remote.left()
 await remote.right()
-await remote.click()      // select focused item
-await remote.menu()       // menu / back button
-await remote.back()       // alias for menu()
+await remote.click() // select focused item
+await remote.menu() // menu / back button
+await remote.back() // alias for menu()
 
 // Playback
 await remote.playPause()
@@ -47,11 +47,13 @@ await remote.volumeDown()
 
 // Power
 await remote.sleep()
-await remote.wake()       // Wake-on-LAN (requires Ethernet on the Apple TV)
+await remote.wake() // Wake-on-LAN (requires Ethernet on the Apple TV)
 
-// Touch gestures — coordinates are on a 0–1000 × 0–1000 surface
-await remote.swipe('right')           // fast-forward
-await remote.swipe('left')            // rewind
+// Touch gestures — coordinates are on a 0–1000 × 0–1000 surface.
+// Swipes travel edge to edge by default (distance 1000, centered);
+// short swipes may not register as directional on tvOS.
+await remote.swipe('right') // fast-forward
+await remote.swipe('left') // rewind
 await remote.swipe('right', { distance: 500, steps: 20 })
 
 // Low-level touch — useful for custom UI or continuous scrubbing
@@ -62,19 +64,34 @@ await remote.touchEnd(700, 500)
 await remote.close()
 ```
 
-The session connection is established during `ready()` and kept open for the lifetime of the remote. If the Apple TV drops the connection (e.g. after a long idle or on sleep), it is re-established transparently on the next command.
+`ready()` loads (or obtains via pairing) the credentials; the encrypted session itself opens lazily on the first command and is then kept alive — the library answers the Apple TV's heartbeats and sends a keepalive every 25 s (the ATV drops idle Companion sockets after ~30 s). If the connection drops anyway (e.g. the ATV sleeps), it is re-established transparently on the next command, retrying up to three times with re-discovery in between.
+
+If the Apple TV definitively rejects the stored credentials, the failing command throws an error with `code: 'EREVOKED'`. Re-pairing is never automatic — it needs a PIN from the TV screen — so handle it explicitly:
+
+```js
+try {
+  await remote.playPause()
+} catch (err) {
+  if (err.code === 'EREVOKED') {
+    await remote.repair() // prompts via onpin; reuses our identity so the ATV replaces the old pairing
+    await remote.playPause()
+  } else {
+    throw err
+  }
+}
+```
 
 ### Options
 
-| Option            | Type                              | Default                            | Description                                                                                     |
-| ----------------- | --------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `onpin`           | `() => Promise<string> \| string` | —                                  | Called when pairing is needed. Return the PIN shown on screen. Required for first-time pairing. |
-| `credentials`     | `Credentials`                     | —                                  | Pass credentials directly, bypassing disk.                                                      |
-| `credentialsFile` | `string`                          | `~/.appletv-credentials.json`      | Override the credentials file path.                                                             |
-| `host`            | `string`                          | —                                  | Skip mDNS discovery and connect directly to this IP address.                                    |
-| `port`            | `number`                          | —                                  | Port to use when `host` is set.                                                                 |
-| `idleTimeout`     | `number`                          | `0`                                | Milliseconds of inactivity before the session is closed. Default keeps it open indefinitely.     |
-| `debug`           | `boolean`                         | `false`                            | Log protocol traffic.                                                                           |
+| Option            | Type                              | Default                       | Description                                                                                     |
+| ----------------- | --------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| `onpin`           | `() => Promise<string> \| string` | —                             | Called when pairing is needed. Return the PIN shown on screen. Required for first-time pairing. |
+| `credentials`     | `Credentials`                     | —                             | Pass credentials directly, bypassing disk.                                                      |
+| `credentialsFile` | `string`                          | `~/.appletv-credentials.json` | Override the credentials file path.                                                             |
+| `host`            | `string`                          | —                             | Skip mDNS discovery and connect directly to this IP address.                                    |
+| `port`            | `number`                          | —                             | Port to use when `host` is set.                                                                 |
+| `idleTimeout`     | `number`                          | `0`                           | Milliseconds of inactivity before the session is closed. Default keeps it open indefinitely.    |
+| `debug`           | `boolean`                         | `false`                       | Log protocol traffic.                                                                           |
 
 ### Events
 
@@ -148,7 +165,7 @@ Uses the **Companion Link** protocol (`_companion-link._tcp` mDNS service) with 
 - **Pairing**: SRP-6a (3072-bit) + Ed25519 long-term keys + ChaCha20-Poly1305
 - **Sessions**: X25519 ephemeral DH + HKDF-SHA512 session keys
 - **Commands**: Encrypted OPACK messages with HID event payloads
-- **Touch**: `_touchUpdate` messages on a 1000×1000 virtual touchpad surface
+- **Touch**: `_hidT` events (press/move/release phases) on a 1000×1000 virtual touchpad surface
 - **Wake**: UDP Wake-on-LAN magic packet (MAC from mDNS `rpAD` TXT record)
 
 Crypto via [`sodium-universal`](https://github.com/holepunchto/sodium-universal).

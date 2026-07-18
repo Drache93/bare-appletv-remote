@@ -51,7 +51,9 @@ class AppleTVRemote extends ReadyResource {
     this.mac = null
 
     this._sessionHandle = null
+    this._sessionOpening = null
     this._idleTimer = null
+    this._touchBase = 0
   }
 
   async _open() {
@@ -89,8 +91,6 @@ class AppleTVRemote extends ReadyResource {
     this.address = creds.address
     this.port = creds.port
     this.mac = creds.mac || null
-
-    await this._getSession()
   }
 
   async _close() {
@@ -99,55 +99,96 @@ class AppleTVRemote extends ReadyResource {
 
   async _getSession() {
     if (!this._sessionHandle) {
-      try {
-        this._sessionHandle = await openSession(this._creds, this.debug)
-      } catch (err) {
-        if (err.verifyError === 2) {
-          // ATV revoked our pairing (Authentication error) — re-pair if we can, else fail clearly
-          if (!this.onpin) {
-            throw new Error(
-              'Apple TV no longer recognises these credentials. ' +
-                'Delete ~/.appletv-credentials.json and re-run `appletv pair`.'
-            )
-          }
-          const devices = await AppleTVRemote.scan({ debug: this.debug })
-          const device = devices.find((d) =>
-            (this._creds.mac && d.txt?.rpAD === this._creds.mac) ||
-            d.name === this._creds.name
-          )
-          if (!device) {
-            throw new Error('Credentials revoked and Apple TV not found on network to re-pair')
-          }
-          this.debug && console.log('[session] credentials revoked — re-pairing')
-          const newCreds = await AppleTVRemote.pair(device, this.onpin, { debug: this.debug })
-          this._creds = newCreds
-          saveCreds(this._credentialsFile, this._creds)
-          this.address = newCreds.address
-          this.port = newCreds.port
-          this.mac = newCreds.mac || null
-          this.emit('paired')
-          this._sessionHandle = await openSession(this._creds, this.debug)
-        } else {
-          // Stale address/port (DHCP renewal or ATV restart) — re-discover and retry once
-          const devices = await AppleTVRemote.scan({ debug: this.debug })
-          const device = devices.find((d) =>
-            (this._creds.mac && d.txt?.rpAD === this._creds.mac) ||
-            d.name === this._creds.name
-          )
-          if (!device) throw err
-          this._creds = { ...this._creds, address: device.address, port: device.port }
-          saveCreds(this._credentialsFile, this._creds)
-          this._sessionHandle = await openSession(this._creds, this.debug)
-        }
+      if (!this._sessionOpening) {
+        this._sessionOpening = this._openSession().finally(() => {
+          this._sessionOpening = null
+        })
       }
-      this._sessionHandle.conn.once('close', () => {
-        clearTimeout(this._idleTimer)
-        this._idleTimer = null
-        this._sessionHandle = null
-      })
+      await this._sessionOpening
     }
     this._resetIdle()
     return this._sessionHandle
+  }
+
+  async _openSession() {
+    const handle = await this._connect()
+    this._sessionHandle = handle
+    handle.conn.once('close', () => {
+      if (this._sessionHandle !== handle) return
+      clearTimeout(this._idleTimer)
+      this._idleTimer = null
+      this._sessionHandle = null
+    })
+    return handle
+  }
+
+  // Pair-verify on a fresh connection, retried. Never pairs — a definitive
+  // credential rejection surfaces as EREVOKED for the caller to handle
+  // via repair(), so a transient failure can't burn a PIN prompt.
+  async _connect() {
+    let err = null
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 300))
+      try {
+        return await openSession(this._creds, this.debug)
+      } catch (e) {
+        err = e
+        this.debug && console.log(`[session] connect attempt ${attempt + 1} failed:`, e.message)
+        // Connection-level failure — address may be stale (DHCP renewal or ATV restart)
+        if (e.verifyError === undefined && attempt === 0) await this._rediscover()
+      }
+    }
+    if (err.verifyError === 2) {
+      const revoked = new Error(
+        'Apple TV rejected the stored credentials — call repair() to pair again'
+      )
+      revoked.code = 'EREVOKED'
+      revoked.cause = err
+      throw revoked
+    }
+    throw err
+  }
+
+  async _rediscover() {
+    const devices = await AppleTVRemote.scan({ debug: this.debug })
+    const device = this._findDevice(devices)
+    if (!device) return
+    this._creds = { ...this._creds, address: device.address, port: device.port }
+    saveCreds(this._credentialsFile, this._creds)
+    this.address = device.address
+    this.port = device.port
+  }
+
+  _findDevice(devices) {
+    return devices.find(
+      (d) => (this._creds.mac && d.txt?.rpAD === this._creds.mac) || d.name === this._creds.name
+    )
+  }
+
+  // Explicit re-pair with the ATV, reusing our existing identity so the ATV
+  // replaces the old pairing record. Prompts via onpin.
+  async repair() {
+    if (!this.onpin) throw new Error('repair() requires an onpin callback')
+    if (!this._creds) this._creds = loadCreds(this._credentialsFile)
+    if (!this._creds) throw new Error('No credentials to re-pair — pairing happens on ready()')
+
+    await this._closeSession()
+
+    const devices = await AppleTVRemote.scan({ debug: this.debug })
+    const device = this._findDevice(devices)
+    if (!device) throw new Error('Apple TV not found on the network')
+
+    const creds = await AppleTVRemote.pair(device, this.onpin, {
+      debug: this.debug,
+      identity: this._creds
+    })
+    this._creds = creds
+    saveCreds(this._credentialsFile, creds)
+    this.name = creds.name
+    this.address = creds.address
+    this.port = creds.port
+    this.mac = creds.mac || null
+    this.emit('paired')
   }
 
   _resetIdle() {
@@ -158,10 +199,17 @@ class AppleTVRemote extends ReadyResource {
   }
 
   async _closeSession() {
-    const handle = this._sessionHandle
-    this._sessionHandle = null
     clearTimeout(this._idleTimer)
     this._idleTimer = null
+    if (this._sessionOpening) {
+      try {
+        await this._sessionOpening
+      } catch {
+        // open failed — nothing to close
+      }
+    }
+    const handle = this._sessionHandle
+    this._sessionHandle = null
     if (handle) await handle.close()
   }
 
@@ -230,9 +278,11 @@ class AppleTVRemote extends ReadyResource {
     sendHID(await this._getSession(), HID.click)
   }
 
+  // Edge-to-edge travel by default — short center swipes don't register
+  // as directional swipes on tvOS
   async swipe(direction, opts = {}) {
-    const steps = opts.steps || 10
-    const distance = opts.distance || 300
+    const steps = opts.steps || 8
+    const distance = opts.distance || 1000
     const stepDelay = opts.stepDelay || 18
 
     if (!this.opened) await this.ready()
@@ -241,16 +291,19 @@ class AppleTVRemote extends ReadyResource {
     const dx = direction === 'right' ? 1 : direction === 'left' ? -1 : 0
     const dy = direction === 'down' ? 1 : direction === 'up' ? -1 : 0
 
+    const x0 = 500 - (dx * distance) / 2
+    const y0 = 500 - (dy * distance) / 2
+
     const start = Date.now()
 
-    sendTouchEvent(handle, 500, 500, TouchPhase.began, Date.now() - start)
+    sendTouchEvent(handle, x0, y0, TouchPhase.began, 0)
 
     for (let i = 1; i <= steps; i++) {
       await new Promise((r) => setTimeout(r, stepDelay))
       sendTouchEvent(
         handle,
-        500 + (dx * distance * i) / steps,
-        500 + (dy * distance * i) / steps,
+        x0 + (dx * distance * i) / steps,
+        y0 + (dy * distance * i) / steps,
         TouchPhase.moved,
         Date.now() - start
       )
@@ -258,8 +311,8 @@ class AppleTVRemote extends ReadyResource {
 
     sendTouchEvent(
       handle,
-      500 + dx * distance,
-      500 + dy * distance,
+      x0 + dx * distance,
+      y0 + dy * distance,
       TouchPhase.ended,
       Date.now() - start
     )
@@ -268,6 +321,26 @@ class AppleTVRemote extends ReadyResource {
     sendTouchEndEvent(handle)
 
     await new Promise((r) => setTimeout(r, 100))
+  }
+
+  async touchBegin(x, y) {
+    if (!this.opened) await this.ready()
+    const handle = await this._getSession()
+    this._touchBase = Date.now()
+    sendTouchEvent(handle, x, y, TouchPhase.began, 0)
+  }
+
+  async touchMove(x, y) {
+    if (!this.opened) await this.ready()
+    sendTouchEvent(await this._getSession(), x, y, TouchPhase.moved, Date.now() - this._touchBase)
+  }
+
+  async touchEnd(x, y) {
+    if (!this.opened) await this.ready()
+    const handle = await this._getSession()
+    sendTouchEvent(handle, x, y, TouchPhase.ended, Date.now() - this._touchBase)
+    await new Promise((r) => setTimeout(r, 50))
+    sendTouchEndEvent(handle)
   }
 
   async wake() {
@@ -285,7 +358,7 @@ class AppleTVRemote extends ReadyResource {
   }
 
   static async pair(device, getPinFn, opts = {}) {
-    const creds = await runPairing(device.address, device.port, getPinFn, opts.debug || false)
+    const creds = await runPairing(device.address, device.port, getPinFn, opts)
     return {
       ...creds,
       name: device.name,
